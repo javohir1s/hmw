@@ -9,9 +9,9 @@ import (
 	"net"
 	"time"
 
+	"errors"
+
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func main() {
@@ -128,6 +128,7 @@ func (s *Service) FindMaximum(stream calculatorpb.CalculatorService_FindMaximumS
 		time.Sleep(time.Second * 1)
 	}
 }
+
 func (s *Service) PerfectNumber(req *calculatorpb.PerfectNumberRequest, stream calculatorpb.CalculatorService_PerfectNumberServer) error {
 	log.Printf("PerfectNumber function request ~~~~~~~~~~~~>>> %+v\n", req)
 
@@ -143,16 +144,8 @@ func (s *Service) PerfectNumber(req *calculatorpb.PerfectNumberRequest, stream c
 		}
 		if perfNum == perfsum {
 			if err := stream.Send(&calculatorpb.PerfectNumberResponse{PerfectNumber: perfNum}); err != nil {
-				if statusErr, ok := status.FromError(err); ok && statusErr.Code() == codes.Canceled {
-					log.Printf("Client canceled the request: %v", err)
-					return err
-				} else if err == io.EOF {
-					log.Printf("EOF sending response: %v", err)
-					return nil
-				} else {
-					log.Printf("Error sending response: %v", err)
-					return err
-				}
+				log.Printf("Error sending response: %v", err)
+				return err
 			}
 		}
 	}
@@ -225,10 +218,8 @@ func (s *Service) SquareRoot(ctx context.Context, req *calculatorpb.SquareRootRe
 	number := req.GetNumber()
 
 	if number < 0 {
-		return nil, status.Errorf(
-			codes.InvalidArgument,
+		return nil, errors.New(
 			"cannot calculate square root of a negative number: %v",
-			number,
 		)
 	}
 
